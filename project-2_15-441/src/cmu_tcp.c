@@ -27,14 +27,17 @@ int cmu_socket(cmu_socket_t *sock, const cmu_socket_type_t socket_type,
                const int port, const char *server_ip) {
   int sockfd, optval;
   socklen_t len;
+  /* socket地址结构  */
   struct sockaddr_in conn, my_addr;
   len = sizeof(my_addr);
 
+  /* UDP socket */
   sockfd = socket(AF_INET, SOCK_DGRAM, 0);
   if (sockfd < 0) {
     perror("ERROR opening socket");
     return EXIT_ERROR;
   }
+  /* 初始化socket参数 */
   sock->socket = sockfd;
   sock->received_buf = NULL;
   sock->received_len = 0;
@@ -51,21 +54,25 @@ int cmu_socket(cmu_socket_t *sock, const cmu_socket_type_t socket_type,
   // FIXME: Sequence numbers should be randomly initialized. The next expected
   // sequence number should be initialized according to the SYN packet from the
   // other side of the connection.
+  // TODO：//
   sock->window.last_ack_received = 0;
   sock->window.next_seq_expected = 0;
   pthread_mutex_init(&(sock->window.ack_lock), NULL);
 
+  /* 创建条件变量 */
   if (pthread_cond_init(&sock->wait_cond, NULL) != 0) {
     perror("ERROR condition variable not set\n");
     return EXIT_ERROR;
   }
 
+  /* 根据服务器或者客户端创建不同的socket */
   switch (socket_type) {
-    case TCP_INITIATOR:
+    case TCP_INITIATOR:   /* client' socket */
       if (server_ip == NULL) {
         perror("ERROR server_ip NULL");
         return EXIT_ERROR;
       }
+      /* socket地址初始化 */
       memset(&conn, 0, sizeof(conn));
       conn.sin_family = AF_INET;
       conn.sin_addr.s_addr = inet_addr(server_ip);
@@ -75,6 +82,7 @@ int cmu_socket(cmu_socket_t *sock, const cmu_socket_type_t socket_type,
       my_addr.sin_family = AF_INET;
       my_addr.sin_addr.s_addr = htonl(INADDR_ANY);
       my_addr.sin_port = 0;
+      /* 将套接字地址和套接字描述符 */
       if (bind(sockfd, (struct sockaddr *)&my_addr, sizeof(my_addr)) < 0) {
         perror("ERROR on binding");
         return EXIT_ERROR;
@@ -82,15 +90,18 @@ int cmu_socket(cmu_socket_t *sock, const cmu_socket_type_t socket_type,
 
       break;
 
-    case TCP_LISTENER:
+    case TCP_LISTENER:     /* server's socket */
       memset(&conn, 0, sizeof(conn));
       conn.sin_family = AF_INET;
-      conn.sin_addr.s_addr = htonl(INADDR_ANY);
-      conn.sin_port = htons((uint16_t)port);
+      conn.sin_addr.s_addr = htonl(INADDR_ANY); /* 主机数转换成无符号长整型的网络字节 */
+      conn.sin_port = htons((uint16_t)port);  /* 端口数转换成无符号长整型的网络字节 */
 
       optval = 1;
+      /* setsockopt(套接字,所在的协议层(SOL_SOCKET为套接字层),
+          访问的选项名,包含新选项值的缓冲,现选项的长度)   */
       setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, (const void *)&optval,
                  sizeof(int));
+      /* 将套接字地址与套接字描述符绑定 */
       if (bind(sockfd, (struct sockaddr *)&conn, sizeof(conn)) < 0) {
         perror("ERROR on binding");
         return EXIT_ERROR;
@@ -102,9 +113,11 @@ int cmu_socket(cmu_socket_t *sock, const cmu_socket_type_t socket_type,
       perror("Unknown Flag");
       return EXIT_ERROR;
   }
+   /* 返回本地地址（因为服务器的case没有初始化my_addr） */
   getsockname(sockfd, (struct sockaddr *)&my_addr, &len);
-  sock->my_port = ntohs(my_addr.sin_port);
+  sock->my_port = ntohs(my_addr.sin_port);  /* ntohs：网络字节顺序转换为主机字节顺序 */
 
+   /* 调用backend.c开始处理后端数据 */
   pthread_create(&(sock->thread_id), NULL, begin_backend, (void *)sock);
   return EXIT_SUCCESS;
 }

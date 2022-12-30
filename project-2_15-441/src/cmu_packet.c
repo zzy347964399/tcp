@@ -89,6 +89,7 @@ void set_extension_data(cmu_tcp_header_t* header, uint8_t* ext_data) {
   memcpy(header->extension_data, ext_data, get_extension_length(header));
 }
 
+/* 构建包的头部信息 */
 void set_header(cmu_tcp_header_t* header, uint16_t src, uint16_t dst,
                 uint32_t seq, uint32_t ack, uint16_t hlen, uint16_t plen,
                 uint8_t flags, uint16_t adv_window, uint16_t ext,

@@ -28,9 +28,9 @@
 #define EXIT_FAILURE 1
 
 typedef struct {
-  uint32_t next_seq_expected;
-  uint32_t last_ack_received;
-  pthread_mutex_t ack_lock;
+  uint32_t next_seq_expected; /* 上一个seq序列 */
+  uint32_t last_ack_received; /* 上一个ack序列 */
+  pthread_mutex_t ack_lock; /* ack的锁（因为ack会增加） */
 } window_t;
 
 /**
@@ -46,21 +46,22 @@ typedef enum {
  * you see fit to include any additional state you need for your implementation.
  */
 typedef struct {
-  int socket;
-  pthread_t thread_id;
-  uint16_t my_port;
-  struct sockaddr_in conn;
-  uint8_t* received_buf;
-  int received_len;
-  pthread_mutex_t recv_lock;
+  int socket;   /* socket端口号 */
+  pthread_t thread_id;  /* 后端运行的线程号 */
+  uint16_t my_port; /* 本机端口 */
+  uint16_t their_port; /* 通讯端口 */
+  struct sockaddr_in conn;  /* 通讯目标socket地址 */
+  uint8_t* received_buf;  /* 接收数据缓冲，初始化为NULL */
+  int received_len; /* 接收数据大小，初始化为0 */
+  pthread_mutex_t recv_lock;  /* 缓冲区的锁 */
   pthread_cond_t wait_cond;
-  uint8_t* sending_buf;
-  int sending_len;
-  cmu_socket_type_t type;
-  pthread_mutex_t send_lock;
-  int dying;
+  uint8_t* sending_buf; /* 发送区域的缓冲，初始化为NULL */
+  int sending_len;  /* 发送区长度 */
+  cmu_socket_type_t type; /* 发送者0或者监听者1 */ 
+  pthread_mutex_t send_lock;  /* 发送缓冲的锁 */
+  int dying;  /* 连接是否关闭，默认为false */
   pthread_mutex_t death_lock;
-  window_t window;
+  window_t window;  /* 滑窗 */
 } cmu_socket_t;
 
 /*
