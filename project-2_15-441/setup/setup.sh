@@ -10,6 +10,13 @@
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
 sudo apt-get update
+sudo apt-get install apt-utils
+
+sudo apt-get install -y 
+sudo apt install -y python3-pip
+
+sudo apt-get install -y pkg-config
+
 
 sudo DEBIAN_FRONTEND=noninteractive apt-get install -y build-essential vim \
     emacs tree tmux git gdb valgrind python3-dev libffi-dev libssl-dev \
