@@ -122,14 +122,23 @@ int cmu_socket(cmu_socket_t *sock, const cmu_socket_type_t socket_type,
   return EXIT_SUCCESS;
 }
 
+
+/* 
+ * Purpose: To remove any state tracking on the socket.
+ *
+ * Return: Returns error code information on the close operation.
+ *
+*/
 int cmu_close(cmu_socket_t *sock) {
   while (pthread_mutex_lock(&(sock->death_lock)) != 0) {
   }
   sock->dying = 1;
   pthread_mutex_unlock(&(sock->death_lock));
 
+  /* 回收线程 */
   pthread_join(sock->thread_id, NULL);
 
+  /* 释放缓冲区 */
   if (sock != NULL) {
     if (sock->received_buf != NULL) {
       free(sock->received_buf);
