@@ -248,6 +248,13 @@ void *begin_backend(void *in) {
   int death, buf_len, send_signal;
   uint8_t *data;
 
+  /* TODO: TCP hand shake here
+  * 
+  * 
+  * 
+  * 
+  *  
+  */
   while (1) {
     while (pthread_mutex_lock(&(sock->death_lock)) != 0) {
     }
@@ -292,4 +299,22 @@ void *begin_backend(void *in) {
 
   pthread_exit(NULL);
   return NULL;
+}
+
+
+// TODO:
+/* 暂定成功返回0，失败返回1，注意对发送者和接收者应该有不同的处理 */
+int TCP_handshake(cmu_socket *socket){
+/* 注意当第三次握手失败时的处理操作: */
+	/* 可以看出当失败时服务器并不会重传ack报文 */ 
+	/* 而是直接发送RTS报文段，进入CLOSED状态。*/
+	/* 这样做的目的是为了防止SYN洪泛攻击。 */
+	/* socket的type确定了发送者和接收者 */
+}
+
+
+// TODO: 
+/* 滑动窗口发送数据，使用GBN的策略，替代原来的single_send函数 */
+void TCP_GBN_send(cmu_socket_t * sock, char* data, int buf_len){
+
 }

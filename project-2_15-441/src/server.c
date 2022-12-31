@@ -50,23 +50,29 @@ void functionality(cmu_socket_t *sock) {
   fclose(fp);
 }
 
+
 int main() {
   int portno;
   char *serverip;
   char *serverport;
   cmu_socket_t socket;
 
-  serverip = getenv("server15441");
+  /* 默认服务器网址 */
+  serverip = getenv("server15441");   /* getenv：从linux环境变量中读取变量值 */
   if (!serverip) {
-    serverip = "10.0.1.1";
+    serverip = "10.0.1.1";    
   }
 
+  /* 默认服务器监听端口 */
   serverport = getenv("serverport15441");
   if (!serverport) {
     serverport = "15441";
   }
+  
+  /* 字符串转为整数  */
   portno = (uint16_t)atoi(serverport);
 
+  /* 判断端口是否被占用 */
   if (cmu_socket(&socket, TCP_LISTENER, portno, serverip) < 0) {
     exit(EXIT_FAILURE);
   }

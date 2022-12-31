@@ -31,7 +31,10 @@ typedef struct {
   uint32_t next_seq_expected; /* 上一个seq序列 */
   uint32_t last_ack_received; /* 上一个ack序列 */
   pthread_mutex_t ack_lock; /* ack的锁（因为ack会增加） */
+  size_t window_size; /* 窗口大小 */
+  uint32_t cur_send_seq; /* 当前发送包的序列号 */
 } window_t;
+
 
 /**
  * CMU-TCP socket types. (DO NOT CHANGE.)

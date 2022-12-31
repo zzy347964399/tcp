@@ -150,9 +150,25 @@ int cmu_close(cmu_socket_t *sock) {
     perror("ERROR null socket\n");
     return EXIT_ERROR;
   }
+  /* 关闭UDP socket */
   return close(sock->socket);
 }
 
+
+/*
+ * 读取socket中的data
+ * Param: sock - The socket to read data from the received buffer.
+ * Param: dst - The buffer to place read data into.
+ * Param: length - The length of data the buffer is willing to accept.
+ * Param: flags - Flags to signify if the read operation should wait for
+ *  available data or not.
+ *
+ * Purpose: To retrive data from the socket buffer for the user application.
+ *
+ * Return: If there is data available in the socket buffer, it is placed
+ *  in the dst buffer, and error information is returned. 
+ *
+ */
 int cmu_read(cmu_socket_t *sock, void *buf, int length, cmu_read_mode_t flags) {
   uint8_t *new_buf;
   int read_len = 0;
@@ -162,31 +178,35 @@ int cmu_read(cmu_socket_t *sock, void *buf, int length, cmu_read_mode_t flags) {
     return EXIT_ERROR;
   }
 
+   /* 等待接收缓冲区到可用状态 */
   while (pthread_mutex_lock(&(sock->recv_lock)) != 0) {
   }
 
+  /* 根据读操作是否需要等待执行不同读操作 */
   switch (flags) {
-    case NO_FLAG:
+    case NO_FLAG: /* 需要等待，注意没有break */
       while (sock->received_len == 0) {
         pthread_cond_wait(&(sock->wait_cond), &(sock->recv_lock));
       }
-    // Fall through.
-    case NO_WAIT:
-      if (sock->received_len > 0) {
-        if (sock->received_len > length)
-          read_len = length;
+    // Fall through.  
+    case NO_WAIT:   /* 不需要等待 */
+      if (sock->received_len > 0) {   /* 如果缓冲区里有数据 */
+        if (sock->received_len > length)    /* 如果缓冲区足够大 */
+          read_len = length;     /* 那么读取的就是需要的长度 */
         else
-          read_len = sock->received_len;
+          read_len = sock->received_len;  /* 如果缓冲区不够大，则只返回缓冲区大小的数据 */
 
+         /* copy数据 */
         memcpy(buf, sock->received_buf, read_len);
-        if (read_len < sock->received_len) {
+        if (read_len < sock->received_len) {  /* 如果没有把所有的数据读取出来 */
           new_buf = malloc(sock->received_len - read_len);
+           /* 把剩余数据储存下来，替换之前的数据 */
           memcpy(new_buf, sock->received_buf + read_len,
                  sock->received_len - read_len);
           free(sock->received_buf);
           sock->received_len -= read_len;
           sock->received_buf = new_buf;
-        } else {
+        } else {    /* 如果全部数据读出来了，则释放缓冲区 */
           free(sock->received_buf);
           sock->received_buf = NULL;
           sock->received_len = 0;
@@ -198,16 +218,31 @@ int cmu_read(cmu_socket_t *sock, void *buf, int length, cmu_read_mode_t flags) {
       read_len = EXIT_ERROR;
   }
   pthread_mutex_unlock(&(sock->recv_lock));
+   /* 返回读取长度 */
   return read_len;
 }
 
+
+/*
+ * Param: sock - The socket which will facilitate data transfer.
+ * Param: src - The data source where data will be taken from for sending.
+ * Param: length - The length of the data to be sent.
+ *
+ * Purpose: To send data to the other side of the connection.
+ *
+ * Return: Writes the data from src into the sockets buffer and
+ *  error information is returned. 
+ *
+ */
 int cmu_write(cmu_socket_t *sock, const void *buf, int length) {
   while (pthread_mutex_lock(&(sock->send_lock)) != 0) {
   }
+  /* 如果发送缓冲区不存在或者太小，将缓冲区变得足够大 */
   if (sock->sending_buf == NULL)
     sock->sending_buf = malloc(length);
   else
     sock->sending_buf = realloc(sock->sending_buf, length + sock->sending_len);
+  /* 将需要发送的数据储存进缓冲区 */
   memcpy(sock->sending_buf + sock->sending_len, buf, length);
   sock->sending_len += length;
 
