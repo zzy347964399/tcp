@@ -27,6 +27,7 @@
 
 #include "cmu_packet.h"
 #include "cmu_tcp.h"
+#include "window.h"
 
 #define MIN(X, Y) (((X) < (Y)) ? (X) : (Y))
 

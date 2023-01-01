@@ -29,14 +29,66 @@
 #define EXIT_SUCCESS 0
 #define EXIT_ERROR -1
 #define EXIT_FAILURE 1
+#define MAXSEQ 100
+#define MAX_BUFFER_SIZE 1000000
 
+/* 滑窗的下标 */
+typedef int SWPSeq;  /* slide window protocol序列号 */ 
+
+/* 发送者的状态 */
+typedef enum {
+	SS_DEFAULT = 1,   /* 默认状态 */
+	SS_TIME_OUT = 2,   /* 超时事件 */
+	SS_RESEND = 3,   /* 重发事件 */
+	SS_SEND_OVER = 4,  /* 当前数据发送完毕 */
+	// SS_WAIT_ACK = 6  /* 窗口满了，需要等待ACK */ t不想做2333
+} send_state;
+
+//以链表形式发送滑动窗口
+typedef struct {
+	uint8_t used;  /* slot是否还在使用，0标识没有使用，1标识正在使用 */
+	uint8_t time_flag;  /* 定时器 */
+	char *msg;  /* 已经打包好的packet */
+} sendQ_slot;
+
+/* 滑窗接收窗口单位 */
+typedef struct RecvQ_slot {
+	uint8_t recv_or_not;
+	char *msg;
+	struct RecvQ_slot *next; /* 组织成链表的形式 */
+} recvQ_slot;
+
+
+/* 定义滑窗协议的窗口结构 */
 typedef struct {
   uint32_t next_seq_expected; /* 上一个seq序列 */
   uint32_t last_ack_received; /* 上一个ack序列 */
   pthread_mutex_t ack_lock;   /* ack的锁（因为ack会增加） */
-  uint32_t last_seq_received;
-  // size_t window_size; /* 窗口大小 */
-  // uint32_t cur_send_seq; /* 当前发送包的序列号 */
+  uint32_t last_seq_received;   //其实在接受的时候可以用nextseq代替，但是这样比较符合直觉
+  uint32_t adv_window;  //发件人可以接受的窗口大小，就是WINDOW_INITIAL_WINDOW_SIZE
+	send_state state;  /* 发送方所处的状态 */
+  // sem_t sendlock;  /* 用信号量控制窗口大小，如果窗口满了会堵塞 */
+	SWPSeq LAR; /* last ack recv */ /* |----------LAR+++++++++LFS--------| */
+	SWPSeq LFS; /* last frame/byte send */
+	SWPSeq DAT; /* 数据的最大下标 */
+  char send_buffer[MAX_BUFFER_SIZE+1];  /* 发送者缓冲 */
+	uint32_t seq_expect;  /* 接收下一个包的seq序列 */
+  uint32_t next_send_seq; //将发送的下一个包的seq序列
+  uint32_t dup_ack_num; /* 当前收到ack的数量 */
+
+	// recvQ_slot recv_buffer_header;  /* 缓存已收到的数据 */
+	// uint8_t timer_flag;  /* 滑窗的计时器是否设置 */
+	// FILE *log;
+	/* 以下数据结构用于计算超时重传间隔 */
+	// struct timeval time_send;  /* 发送包的时间 */
+	// SWPSeq send_seq;
+	long TimeoutInterval;  /* 超时时间 */
+	long EstimatedRTT;  /* （加权）平均RTT时间 */
+	long DevRTT;  /* RTT偏差时间 */
+  
+	// uint32_t CWND; /* 拥塞窗口大小,单位是字节数 */
+	// uint32_t Ssthresh; /* 慢启动阈值，单位是字节数 */
+	// CongestionState congestionState;
 } window_t;
 
 /**
@@ -46,6 +98,8 @@ typedef enum {
   TCP_INITIATOR = 0,
   TCP_LISTENER = 1,
 } cmu_socket_type_t;
+
+
 
 /**
  * This structure holds the state of a socket. You may modify this structure as
@@ -70,6 +124,8 @@ typedef struct {
   window_t window; /* 滑窗 */
   TCP_State state;
 } cmu_socket_t;
+
+
 
 /*
  * DO NOT CHANGE THE DECLARATIONS BELOW

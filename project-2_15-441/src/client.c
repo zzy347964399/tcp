@@ -56,7 +56,7 @@ void TCP_handshake_client(cmu_socket_t *sock) {
     cmu_tcp_header_t *header;
     uint32_t seq, ack;
     switch (sock->state) {
-      case TCP_CLOSED: {  // 第一次连接
+      case TCP_CLOSED: {  // 第一次握手
         seq = rand() % MAXSEQ;
         ack = seq + 1;
         /* client 发送SYN */
@@ -71,7 +71,7 @@ void TCP_handshake_client(cmu_socket_t *sock) {
         sock->window.last_seq_received = 0;
         break;
       }
-      case TCP_SYN_SEND: { /* after send */
+      case TCP_SYN_SEND: { /* after send 可能是第三次握手 */
         printf("waiting for SYN-ACK...");
         header = check_for_data(sock, TIMEOUT);
         if ((get_flags(header)) == (SYN_FLAG_MASK | ACK_FLAG_MASK)) {
