@@ -43,9 +43,7 @@ def test_basic_ack_packets():
                 conn.run(START_TESTING_SERVER_CMD)
                 conn.run("tmux has-session -t pytest_server")
                 syn_pkt = (
-                    ip /
-                    udp /
-                    CMUTCP(plen=25, seq_num=1000, flags=SYN_MASK)
+                    ip / udp / CMUTCP(plen=25, seq_num=1000, flags=SYN_MASK)
                 )
                 syn_ack_pkt = sr1(syn_pkt, timeout=TIMEOUT, iface=IFNAME)
 
@@ -65,9 +63,9 @@ def test_basic_ack_packets():
                 print(syn_ack_pkt[CMUTCP].seq_num)
 
                 ack_pkt = (
-                    ip /
-                    udp /
-                    CMUTCP(
+                    ip
+                    / udp
+                    / CMUTCP(
                         plen=25,
                         seq_num=1001,
                         ack_num=syn_ack_pkt[CMUTCP].seq_num + 1,
@@ -83,9 +81,9 @@ def test_basic_ack_packets():
                     return
 
                 data_pkt = (
-                    ip /
-                    udp /
-                    CMUTCP(
+                    ip
+                    / udp
+                    / CMUTCP(
                         plen=25 + len(payload),
                         seq_num=1001,
                         ack_num=syn_ack_pkt[CMUTCP].seq_num + 1,

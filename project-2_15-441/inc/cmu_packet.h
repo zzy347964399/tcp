@@ -36,7 +36,7 @@ typedef struct {
 #define ACK_FLAG_MASK 0x4
 #define FIN_FLAG_MASK 0x2
 #define IDENTIFIER 15441
-#define DEFAULT_HEADER_LEN 25   
+#define DEFAULT_HEADER_LEN 25
 
 // Maximum Segment Size. Make sure to update this if your CCA requires extension
 // data for all packets, as this reduces the payload and thus the MSS.

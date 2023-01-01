@@ -30,7 +30,7 @@
 
 #define MIN(X, Y) (((X) < (Y)) ? (X) : (Y))
 
-/** 
+/**
  * 序列号有没有被收到
  * Tells if a given sequence number has been acknowledged by the socket.
  *
@@ -48,7 +48,7 @@ int has_been_acked(cmu_socket_t *sock, uint32_t seq) {
   return result;
 }
 
-/** 
+/**
  * 如果受到pkg，就更新socket信息，并且发送ack
  * Updates the socket information to represent the newly received packet.
  *
@@ -66,14 +66,17 @@ void handle_message(cmu_socket_t *sock, uint8_t *pkt) {
   switch (flags) {
     case ACK_FLAG_MASK: { /* 包含ACK */
       uint32_t ack = get_ack(hdr);
-      if (after(ack, sock->window.last_ack_received)) {/* 如果ack的值大于上次收到的值 */
+      if (after(
+              ack,
+              sock->window.last_ack_received)) { /* 如果ack的值大于上次收到的值
+                                                  */
         sock->window.last_ack_received = ack; /* 设置为新值 */
       }
       break;
     }
     default: {
       socklen_t conn_len = sizeof(sock->conn);
-      uint32_t seq = sock->window.last_ack_received;  /* 检查对方收到的序列 */
+      uint32_t seq = sock->window.last_ack_received; /* 检查对方收到的序列 */
 
       // No payload.
       uint8_t *payload = NULL;
@@ -85,7 +88,8 @@ void handle_message(cmu_socket_t *sock, uint8_t *pkt) {
 
       //发送只有头部的包（ACK）
       uint16_t src = sock->my_port;
-      uint16_t dst = ntohs(sock->conn.sin_port);  // 将一个无符号短整型数从网络 字节顺序 转换为主机字节顺序
+      uint16_t dst = ntohs(sock->conn.sin_port);  // 将一个无符号短整型数从网络
+                                                  // 字节顺序 转换为主机字节顺序
       uint32_t ack = get_seq(hdr) + get_payload_len(pkt);
       uint16_t hlen = sizeof(cmu_tcp_header_t);
       uint16_t plen = hlen + payload_len;
@@ -111,7 +115,7 @@ void handle_message(cmu_socket_t *sock, uint8_t *pkt) {
         /* 创建接受数据的空间*/
         sock->received_buf =
             realloc(sock->received_buf, sock->received_len + payload_len);
-            /* 把pkg的数据拷贝到socket结构里面去*/
+        /* 把pkg的数据拷贝到socket结构里面去*/
         memcpy(sock->received_buf + sock->received_len, payload, payload_len);
         sock->received_len += payload_len;
       }
@@ -130,7 +134,7 @@ void handle_message(cmu_socket_t *sock, uint8_t *pkt) {
  * @param flags Flags that determine how the socket should wait for data. Check
  *             `cmu_read_mode_t` for more information.
  */
-cmu_tcp_header_t* check_for_data(cmu_socket_t *sock, cmu_read_mode_t flags) {
+cmu_tcp_header_t *check_for_data(cmu_socket_t *sock, cmu_read_mode_t flags) {
   /* 储存头部包信息*/
   cmu_tcp_header_t hdr;
   uint8_t *pkt;
@@ -146,9 +150,10 @@ cmu_tcp_header_t* check_for_data(cmu_socket_t *sock, cmu_read_mode_t flags) {
                      (struct sockaddr *)&(sock->conn), &conn_len);
       break;
     case TIMEOUT: {
-      // Using `poll` here so that we can specify a timeout. pollfd包含一个int类型的文件描述符、short类型的（等待的事件+实际发生了的事件）
+      // Using `poll` here so that we can specify a timeout.
+      // pollfd包含一个int类型的文件描述符、short类型的（等待的事件+实际发生了的事件）
       /* 设置非堵塞等待 */
-      struct pollfd ack_fd; 
+      struct pollfd ack_fd;
       ack_fd.fd = sock->socket;
       ack_fd.events = POLLIN;
       /* 等待设定时间直到socket收到信息，如果时间内没有返回则break */
@@ -158,7 +163,7 @@ cmu_tcp_header_t* check_for_data(cmu_socket_t *sock, cmu_read_mode_t flags) {
       }
     }
     // Fallthrough.
-    case NO_WAIT:    
+    case NO_WAIT:
       len = recvfrom(sock->socket, &hdr, sizeof(cmu_tcp_header_t),
                      MSG_DONTWAIT | MSG_PEEK, (struct sockaddr *)&(sock->conn),
                      &conn_len);
@@ -178,7 +183,7 @@ cmu_tcp_header_t* check_for_data(cmu_socket_t *sock, cmu_read_mode_t flags) {
     }
     /* 将收到的数据（pkt）储存在socket中
         把pkt的payload部分拼接到sock->received_buf的后面，
-        并且现在的received_len是原先长度加上payload_len 
+        并且现在的received_len是原先长度加上payload_len
     */
     handle_message(sock, pkt);
     free(pkt);
@@ -220,7 +225,7 @@ void single_send(cmu_socket_t *sock, uint8_t *data, int buf_len) {
       uint16_t ext_len = 0;
       uint8_t *ext_data = NULL;
       uint8_t *payload = data_offset;
-      
+
       /* 如果包足够小，那么下面两句走一次就行；
          如果包较大，则进入buf_len!=0的循环，分多次发送*/
       msg = create_packet(src, dst, seq, ack, hlen, plen, flags, adv_window,
@@ -247,7 +252,6 @@ void single_send(cmu_socket_t *sock, uint8_t *data, int buf_len) {
   }
 }
 
-
 /* 轮询 send+receive 数据*    代码不是很理解*/
 void *begin_backend(void *in) {
   cmu_socket_t *sock = (cmu_socket_t *)in;
@@ -255,12 +259,12 @@ void *begin_backend(void *in) {
   uint8_t *data;
 
   /* TODO: TCP hand shake here
-  * 
-  * 
-  * 
-  * 
-  *  
-  */
+   *
+   *
+   *
+   *
+   *
+   */
   while (1) {
     while (pthread_mutex_lock(&(sock->death_lock)) != 0) {
     }
@@ -288,7 +292,6 @@ void *begin_backend(void *in) {
       pthread_mutex_unlock(&(sock->send_lock));
     }
 
-    
     /* 检查recv数据*/
     check_for_data(sock, NO_WAIT);
 
@@ -308,20 +311,18 @@ void *begin_backend(void *in) {
   return NULL;
 }
 
+// // TODO:
+// /* 暂定成功返回0，失败返回1，注意对发送者和接收者应该有不同的处理 */
+// int TCP_handshake(cmu_socket *socket){
+// /* 注意当第三次握手失败时的处理操作: */
+// 	/* 可以看出当失败时服务器并不会重传ack报文 */
+// 	/* 而是直接发送RTS报文段，进入CLOSED状态。*/
+// 	/* 这样做的目的是为了防止SYN洪泛攻击。 */
+// 	/* socket的type确定了发送者和接收者 */
+// }
 
-// TODO:
-/* 暂定成功返回0，失败返回1，注意对发送者和接收者应该有不同的处理 */
-int TCP_handshake(cmu_socket *socket){
-/* 注意当第三次握手失败时的处理操作: */
-	/* 可以看出当失败时服务器并不会重传ack报文 */ 
-	/* 而是直接发送RTS报文段，进入CLOSED状态。*/
-	/* 这样做的目的是为了防止SYN洪泛攻击。 */
-	/* socket的type确定了发送者和接收者 */
-}
+// //TODO:
+// /* 滑动窗口发送数据，使用GBN的策略，替代原来的single_send函数 */
+// void TCP_GBN_send(cmu_socket_t * sock, char* data, int buf_len){
 
-
-//TODO: 
-/* 滑动窗口发送数据，使用GBN的策略，替代原来的single_send函数 */
-void TCP_GBN_send(cmu_socket_t * sock, char* data, int buf_len){
-
-}
+// }

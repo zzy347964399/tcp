@@ -12,7 +12,7 @@ SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 sudo apt-get update
 sudo apt-get install apt-utils
 
-sudo apt-get install -y 
+sudo apt-get install -y
 sudo apt install -y python3-pip
 
 sudo apt-get install -y pkg-config

@@ -16,8 +16,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "cmu_tcp.h"
 #include "backend.h"
+#include "cmu_tcp.h"
 
 void functionality(cmu_socket_t *sock) {
   uint8_t buf[9898];
@@ -50,41 +50,42 @@ void functionality(cmu_socket_t *sock) {
 }
 
 #define MAXSEQ 30
-void TCP_handshake_client(cmu_socket_t *sock){
+void TCP_handshake_client(cmu_socket_t *sock) {
   while (sock->state != TCP_ESTABLISHED) {
     unsigned char *packet;
     cmu_tcp_header_t *header;
     uint32_t seq, ack;
-    switch(sock->state){
-    case TCP_CLOSED:{  // 第一次连接
+    switch (sock->state) {
+      case TCP_CLOSED: {  // 第一次连接
         seq = rand() % MAXSEQ;
         ack = seq + 1;
         /* client 发送SYN */
-        packet = create_packet(sock->my_port, sock->their_port,
-               seq, ack, DEFAULT_HEADER_LEN, DEFAULT_HEADER_LEN,
-               SYN_FLAG_MASK, 0, 0, NULL, NULL, 0);
-        sendto(sock->socket, packet, DEFAULT_HEADER_LEN, 0, 
-            (struct sockaddr*) &(sock->conn), sizeof(sock->conn));
+        packet = create_packet(sock->my_port, sock->their_port, seq, ack,
+                               DEFAULT_HEADER_LEN, DEFAULT_HEADER_LEN,
+                               SYN_FLAG_MASK, 0, 0, NULL, NULL, 0);
+        sendto(sock->socket, packet, DEFAULT_HEADER_LEN, 0,
+               (struct sockaddr *)&(sock->conn), sizeof(sock->conn));
         free(packet);
         sock->state = TCP_SYN_SEND;
         sock->window.last_ack_received = seq;
         sock->window.last_seq_received = 0;
         break;
       }
-    case TCP_SYN_SEND:{ /* after send */
-        printf("waiting for SYN-ACK..."); 
-        header= check_for_data(sock, TIMEOUT);
-        if ((get_flags(header)) == (SYN_FLAG_MASK|ACK_FLAG_MASK)) {
+      case TCP_SYN_SEND: { /* after send */
+        printf("waiting for SYN-ACK...");
+        header = check_for_data(sock, TIMEOUT);
+        if ((get_flags(header)) == (SYN_FLAG_MASK | ACK_FLAG_MASK)) {
           ack = get_seq(header) + 1;
           seq = get_ack(header);
           /* 发送中包含本端的接收窗口大小 */
-          packet = create_packet(sock->my_port, sock->their_port,seq,
-            ack, DEFAULT_HEADER_LEN, DEFAULT_HEADER_LEN,ACK_FLAG_MASK/* 返回ACK */,
-            MAX_RECV_SIZE, 0, NULL, NULL, 0);
-          sendto(sock->socket, packet, DEFAULT_HEADER_LEN, 0, 
-              (struct sockaddr *)&(sock->conn), sizeof(sock->conn));
+          packet = create_packet(sock->my_port, sock->their_port, seq, ack,
+                                 DEFAULT_HEADER_LEN, DEFAULT_HEADER_LEN,
+                                 ACK_FLAG_MASK /* 返回ACK */, MAX_RECV_SIZE, 0,
+                                 NULL, NULL, 0);
+          sendto(sock->socket, packet, DEFAULT_HEADER_LEN, 0,
+                 (struct sockaddr *)&(sock->conn), sizeof(sock->conn));
           free(packet);
-          sock->state = TCP_ESTABLISHED;
+          sock->state = TCP_ESTABLISHED;  // 服务器收到ACK，握手完成
           sock->window.last_ack_received = ack;
           sock->window.last_seq_received = seq;
           printf("连接建立成功！");
@@ -100,11 +101,6 @@ void TCP_handshake_client(cmu_socket_t *sock){
     }
   }
 }
-
-
-
-
-
 
 int main() {
   int portno;
@@ -127,8 +123,8 @@ int main() {
     exit(EXIT_FAILURE);
   }
 
-  TCP_handshake_client(&socket); //不成功就会一直尝试连接
-  
+  TCP_handshake_client(&socket);  //while确保不成功就会一直尝试连接
+
   functionality(&socket);
 
   if (cmu_close(&socket) < 0) {

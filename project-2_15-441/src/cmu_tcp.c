@@ -67,7 +67,7 @@ int cmu_socket(cmu_socket_t *sock, const cmu_socket_type_t socket_type,
 
   /* 根据服务器或者客户端创建不同的socket */
   switch (socket_type) {
-    case TCP_INITIATOR:   /* client' socket */
+    case TCP_INITIATOR: /* client' socket */
       if (server_ip == NULL) {
         perror("ERROR server_ip NULL");
         return EXIT_ERROR;
@@ -90,11 +90,13 @@ int cmu_socket(cmu_socket_t *sock, const cmu_socket_type_t socket_type,
 
       break;
 
-    case TCP_LISTENER:     /* server's socket */
+    case TCP_LISTENER: /* server's socket */
       memset(&conn, 0, sizeof(conn));
       conn.sin_family = AF_INET;
-      conn.sin_addr.s_addr = htonl(INADDR_ANY); /* 主机数转换成无符号长整型的网络字节 */
-      conn.sin_port = htons((uint16_t)port);  /* 端口数转换成无符号长整型的网络字节 */
+      conn.sin_addr.s_addr =
+          htonl(INADDR_ANY); /* 主机数转换成无符号长整型的网络字节 */
+      conn.sin_port =
+          htons((uint16_t)port); /* 端口数转换成无符号长整型的网络字节 */
 
       optval = 1;
       /* setsockopt(套接字,所在的协议层(SOL_SOCKET为套接字层),
@@ -113,22 +115,22 @@ int cmu_socket(cmu_socket_t *sock, const cmu_socket_type_t socket_type,
       perror("Unknown Flag");
       return EXIT_ERROR;
   }
-   /* 返回本地地址（因为服务器的case没有初始化my_addr） */
+  /* 返回本地地址（因为服务器的case没有初始化my_addr） */
   getsockname(sockfd, (struct sockaddr *)&my_addr, &len);
-  sock->my_port = ntohs(my_addr.sin_port);  /* ntohs：网络字节顺序转换为主机字节顺序 */
+  sock->my_port =
+      ntohs(my_addr.sin_port); /* ntohs：网络字节顺序转换为主机字节顺序 */
 
-   /* 调用backend.c开始处理后端数据 */
+  /* 调用backend.c开始处理后端数据 */
   pthread_create(&(sock->thread_id), NULL, begin_backend, (void *)sock);
   return EXIT_SUCCESS;
 }
 
-
-/* 
+/*
  * Purpose: To remove any state tracking on the socket.
  *
  * Return: Returns error code information on the close operation.
  *
-*/
+ */
 int cmu_close(cmu_socket_t *sock) {
   while (pthread_mutex_lock(&(sock->death_lock)) != 0) {
   }
@@ -154,7 +156,6 @@ int cmu_close(cmu_socket_t *sock) {
   return close(sock->socket);
 }
 
-
 /*
  * 读取socket中的data
  * Param: sock - The socket to read data from the received buffer.
@@ -166,7 +167,7 @@ int cmu_close(cmu_socket_t *sock) {
  * Purpose: To retrive data from the socket buffer for the user application.
  *
  * Return: If there is data available in the socket buffer, it is placed
- *  in the dst buffer, and error information is returned. 
+ *  in the dst buffer, and error information is returned.
  *
  */
 int cmu_read(cmu_socket_t *sock, void *buf, int length, cmu_read_mode_t flags) {
@@ -178,7 +179,7 @@ int cmu_read(cmu_socket_t *sock, void *buf, int length, cmu_read_mode_t flags) {
     return EXIT_ERROR;
   }
 
-   /* 等待接收缓冲区到可用状态 */
+  /* 等待接收缓冲区到可用状态 */
   while (pthread_mutex_lock(&(sock->recv_lock)) != 0) {
   }
 
@@ -188,25 +189,27 @@ int cmu_read(cmu_socket_t *sock, void *buf, int length, cmu_read_mode_t flags) {
       while (sock->received_len == 0) {
         pthread_cond_wait(&(sock->wait_cond), &(sock->recv_lock));
       }
-    // Fall through.  
-    case NO_WAIT:   /* 不需要等待 */
-      if (sock->received_len > 0) {   /* 如果缓冲区里有数据 */
-        if (sock->received_len > length)    /* 如果缓冲区足够大 */
-          read_len = length;     /* 那么读取的就是需要的长度 */
+    // Fall through.
+    case NO_WAIT:                        /* 不需要等待 */
+      if (sock->received_len > 0) {      /* 如果缓冲区里有数据 */
+        if (sock->received_len > length) /* 如果缓冲区足够大 */
+          read_len = length; /* 那么读取的就是需要的长度 */
         else
-          read_len = sock->received_len;  /* 如果缓冲区不够大，则只返回缓冲区大小的数据 */
+          read_len =
+              sock->received_len; /* 如果缓冲区不够大，则只返回缓冲区大小的数据
+                                   */
 
-         /* copy数据 */
+        /* copy数据 */
         memcpy(buf, sock->received_buf, read_len);
-        if (read_len < sock->received_len) {  /* 如果没有把所有的数据读取出来 */
+        if (read_len < sock->received_len) { /* 如果没有把所有的数据读取出来 */
           new_buf = malloc(sock->received_len - read_len);
-           /* 把剩余数据储存下来，替换之前的数据 */
+          /* 把剩余数据储存下来，替换之前的数据 */
           memcpy(new_buf, sock->received_buf + read_len,
                  sock->received_len - read_len);
           free(sock->received_buf);
           sock->received_len -= read_len;
           sock->received_buf = new_buf;
-        } else {    /* 如果全部数据读出来了，则释放缓冲区 */
+        } else { /* 如果全部数据读出来了，则释放缓冲区 */
           free(sock->received_buf);
           sock->received_buf = NULL;
           sock->received_len = 0;
@@ -218,10 +221,9 @@ int cmu_read(cmu_socket_t *sock, void *buf, int length, cmu_read_mode_t flags) {
       read_len = EXIT_ERROR;
   }
   pthread_mutex_unlock(&(sock->recv_lock));
-   /* 返回读取长度 */
+  /* 返回读取长度 */
   return read_len;
 }
-
 
 /*
  * Param: sock - The socket which will facilitate data transfer.
@@ -231,7 +233,7 @@ int cmu_read(cmu_socket_t *sock, void *buf, int length, cmu_read_mode_t flags) {
  * Purpose: To send data to the other side of the connection.
  *
  * Return: Writes the data from src into the sockets buffer and
- *  error information is returned. 
+ *  error information is returned.
  *
  */
 int cmu_write(cmu_socket_t *sock, const void *buf, int length) {
