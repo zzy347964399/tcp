@@ -120,7 +120,7 @@ void handle_message(cmu_socket_t *sock, uint8_t *pkt) {
 }
 
 /**
- * 检查socket有没有收到data
+ * 检查socket有没有收到data，返回header
  * Checks if the socket received any data.
  *
  * It first peeks at the header to figure out the length of the packet and then
@@ -130,7 +130,7 @@ void handle_message(cmu_socket_t *sock, uint8_t *pkt) {
  * @param flags Flags that determine how the socket should wait for data. Check
  *             `cmu_read_mode_t` for more information.
  */
-void check_for_data(cmu_socket_t *sock, cmu_read_mode_t flags) {
+cmu_tcp_header_t* check_for_data(cmu_socket_t *sock, cmu_read_mode_t flags) {
   /* 储存头部包信息*/
   cmu_tcp_header_t hdr;
   uint8_t *pkt;
@@ -176,11 +176,17 @@ void check_for_data(cmu_socket_t *sock, cmu_read_mode_t flags) {
                    (struct sockaddr *)&(sock->conn), &conn_len);
       buf_size = buf_size + n;
     }
-    /* 将收到的数据（pkt）储存在socket中 */
+    /* 将收到的数据（pkt）储存在socket中
+        把pkt的payload部分拼接到sock->received_buf的后面，
+        并且现在的received_len是原先长度加上payload_len 
+    */
     handle_message(sock, pkt);
     free(pkt);
   }
   pthread_mutex_unlock(&(sock->recv_lock));
+  cmu_tcp_header_t *header = (cmu_tcp_header_t *)malloc(DEFAULT_HEADER_LEN);
+  memcpy(header, &hdr, DEFAULT_HEADER_LEN);
+  return header;
 }
 
 /**
@@ -282,6 +288,7 @@ void *begin_backend(void *in) {
       pthread_mutex_unlock(&(sock->send_lock));
     }
 
+    
     /* 检查recv数据*/
     check_for_data(sock, NO_WAIT);
 
@@ -313,7 +320,7 @@ int TCP_handshake(cmu_socket *socket){
 }
 
 
-// TODO: 
+//TODO: 
 /* 滑动窗口发送数据，使用GBN的策略，替代原来的single_send函数 */
 void TCP_GBN_send(cmu_socket_t * sock, char* data, int buf_len){
 

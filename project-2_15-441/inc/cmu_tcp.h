@@ -22,6 +22,9 @@
 
 #include "cmu_packet.h"
 #include "grading.h"
+#include "global.h"
+//理论上只有server能调用，但是为了让client用上check_for_data所以写到这里来
+// #include "backend.h"
 
 #define EXIT_SUCCESS 0
 #define EXIT_ERROR -1
@@ -31,8 +34,9 @@ typedef struct {
   uint32_t next_seq_expected; /* 上一个seq序列 */
   uint32_t last_ack_received; /* 上一个ack序列 */
   pthread_mutex_t ack_lock; /* ack的锁（因为ack会增加） */
-  size_t window_size; /* 窗口大小 */
-  uint32_t cur_send_seq; /* 当前发送包的序列号 */
+  uint32_t last_seq_received;
+  // size_t window_size; /* 窗口大小 */
+  // uint32_t cur_send_seq; /* 当前发送包的序列号 */
 } window_t;
 
 
@@ -65,6 +69,7 @@ typedef struct {
   int dying;  /* 连接是否关闭，默认为false */
   pthread_mutex_t death_lock;
   window_t window;  /* 滑窗 */
+  TCP_State state;
 } cmu_socket_t;
 
 /*
